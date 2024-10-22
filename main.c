@@ -6,6 +6,11 @@
 #include "image.h"
 #include "sixel.h"
 
+#define CONSOLE_HIDE_CURSOR    "\e[?25l"
+#define CONSOLE_CLEAR          "\e[2J"
+#define CONSOLE_SETCURSORBEG   "\e[H"
+#define CONCOLE_PADING         "\n\n\n     "
+
 void sleep_milisec(int milisec) {
     struct timespec ts;
     ts.tv_sec = (milisec / 1000);
@@ -17,6 +22,8 @@ void sleep_milisec(int milisec) {
 #define IMG_SIZE_Y  (250)
 
 int test_1(void) {
+    uintmax_t beg = 0;
+    uintmax_t end = 0;
 
     sixel_color_t color_map[] = {
         {.model = SIXEL_RGB(00, 00, 00)}, /*  0 Black    */
@@ -42,22 +49,31 @@ int test_1(void) {
     sixel_t *sixel = NULL;
     sixel_color_t image[IMG_SIZE_X * IMG_SIZE_Y] = {0};
 
-    build_image_map(IMG_SIZE_X, IMG_SIZE_Y, image, color_count, color_map);
-
     if (!sixel_init(&sixel, IMG_SIZE_X, IMG_SIZE_Y)) {
         goto end;
     }
 
-    if (!sixel_init_colormap(sixel, SIXEL_COLOR_MODEL_RGB, color_count, color_map)) {
+    if (!sixel_cmap_init(sixel, SIXEL_COLOR_MODEL_RGB, color_count, color_map)) {
         goto end;
     }
 
-    if (!sixel_draw(sixel, IMG_SIZE_X, IMG_SIZE_Y, image)) {
-        goto end;
-    }
+    sixel_draw_init(sixel);
 
-    printf("out %d %d \n", sixel->out_buff_len, sixel->out_buff_shift_max);
-    printf("tmp %d %d \n", sixel->tmp_buff_len, sixel->tmp_buff_shift_max);
+    for (;;) {
+        printf(CONSOLE_SETCURSORBEG);
+
+        beg = times(NULL);
+
+        build_image_map(IMG_SIZE_X, IMG_SIZE_Y, image, color_count, color_map);
+
+        if (!sixel_draw(sixel, IMG_SIZE_X, IMG_SIZE_Y, image)) {
+            goto end;
+        }
+
+        end = times(NULL);
+        printf("elapsed time: %ju ticks\n", end - beg);
+        fflush(stdout);
+    }
 
     if (!sixel_free(&sixel)) {
         goto end;
@@ -90,9 +106,11 @@ int test_2(void) {
         goto end;
     }
 
-    if (!sixel_init_colormap(sixel, SIXEL_COLOR_MODEL_RGB, color_count, color_map)) {
+    if (!sixel_cmap_init(sixel, SIXEL_COLOR_MODEL_RGB, color_count, color_map)) {
         goto end;
     }
+
+    sixel_draw_init(sixel);
 
     if (!sixel_draw(sixel, IMG_SIZE_X, IMG_SIZE_Y, image)) {
         goto end;
@@ -112,17 +130,10 @@ end:
     return -1;
 }
 
-#define CONSOLE_HIDE_CURSOR    "\e[?25l"
-#define CONSOLE_CLEAR          "\e[2J"
-#define CONSOLE_SETCURSORBEG   "\e[H"
-#define CONCOLE_PADING         "\n\n\n     "
-
 int main() {
     printf(CONSOLE_HIDE_CURSOR);
 
     int err = 0;
-    uintmax_t start = 0;
-    uintmax_t end = 0;
 
     for (int i = 0;; i++) {
         printf(CONSOLE_CLEAR);
@@ -130,7 +141,6 @@ int main() {
 
         switch (1) {
         case 1: {
-            start = times(NULL);
             if ((err = test_1())) {
                 return err;
             }
@@ -147,9 +157,7 @@ int main() {
         }
 
         // sleep_milisec(100);
-        end = times(NULL);
         printf("cycle count: %d ticks\n", i);
-        printf("elapsed time: %ju ticks\n", end - start);
     }
     return 0;
 }
