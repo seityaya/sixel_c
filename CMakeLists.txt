@@ -6,4 +6,6 @@ add_executable(sixel
     main.c
     image.h image.c
     sixel.h sixel.c
+    test_1.c
+    test_2.c
     )
