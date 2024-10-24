@@ -1,9 +1,7 @@
 #include <stdio.h>
 
-#include "image.h"
-#include "sixel.h"
 #include "mtime.h"
-
+#include "sixel.h"
 
 extern int test_1_init(void);
 extern int test_1_loop(uint32_t type);
@@ -17,31 +15,28 @@ extern int test_3_init(void);
 extern int test_3_loop(uint32_t type);
 extern int test_3_free(void);
 
+#define CONSOLE_HIDE_CURSOR "\e[?25l"
+#define CONSOLE_VIEW_CURSOR "\e[?25h"
 
-#define CONSOLE_HIDE_CURSOR    "\e[?25l"
-#define CONSOLE_VIEW_CURSOR    "\e[?25h"
-
-#define CONSOLE_CLEAR          "\e[2J"
-#define CONSOLE_SETCURSORBEG   "\e[H"
-#define CONCOLE_PADING         "\n\n\n     "
-
+#define CONSOLE_CLEAR "\e[2J"
+#define CONSOLE_SETCURSORBEG "\e[H"
+#define CONCOLE_PADING "\n\n\n     "
 
 int main(int argc, char *argv[]) {
     //*******************************************************
-    uint32_t test_cycles = 300;
+    uint32_t test_cycles = 20;
     uint64_t test_frame_fps_milisec = 1;
 
-    uint32_t test_number = 3;
+    uint32_t test_number = 3; // 1 - 3
 
-    uint32_t test_1_type = 5;
-    uint32_t test_2_type = 5;
-    uint32_t test_3_type = 1;
+    uint32_t test_1_type = 6; // 0 - 7
+    uint32_t test_2_type = 5; // 0 - 5
     //*******************************************************
 
     realtime_t beg = {0};
     realtime_t cen = {0};
     realtime_t end = {0};
-    long double average_loop_time  = 0;
+    long double average_loop_time = 0;
     long double average_frame_time = 0;
 
     int err = 0;
@@ -91,7 +86,7 @@ int main(int argc, char *argv[]) {
             break;
         }
         case 3: {
-            if ((err = test_3_loop(test_3_type))) {
+            if ((err = test_3_loop(0))) {
                 goto end;
             }
             break;

@@ -22,7 +22,7 @@ bool sixel_init(sixel_t **sixel, uint32_t max_size_x, uint32_t max_size_y) {
 
     (*sixel) = (sixel_t *)calloc(1, sizeof(sixel_t));
 
-    (*sixel)->out_buff_len = (max_size_x * max_size_y) * 20 + 1;  // TODO: Придумать эвристику лучше
+    (*sixel)->out_buff_len = (max_size_x * max_size_y) * 20 + 1; // TODO: Придумать эвристику лучше
     (*sixel)->out_buff = (char *)calloc((*sixel)->out_buff_len, sizeof(char));
 
     (*sixel)->max_size_x = max_size_x;
@@ -58,8 +58,6 @@ bool sixel_free(sixel_t **sixel) {
     *sixel = NULL;
     return true;
 }
-
-#define BIT_TO_SUMBOL(a1, a2, a3, a4, a5, a6) (char)(((a1) * 32 + (a2) * 16 + (a3) * 8 + (a4) * 4 + (a5) * 2 + (a6) * 1) + SIXEL_CONTROL_FUNCTIONS_BEG_DATA_CHARACTERS)
 
 bool sixel_draw_init(sixel_t *sixel) {
     if (sixel == NULL) {
@@ -120,73 +118,71 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
         return false;
     }
 
-    bool subline_bitmap[image->size_x][6];
+    bool subbm[image->size_x][SIXEL_PIXEL_IN_ONE_LINE];
 
     int out_shift = (int)(sixel->out_buff_shift_init);
     char *out_buff = sixel->out_buff;
 
-    for (uint32_t j = 0; j < image->size_y; j += 6) {
-
+    for (uint32_t j = 0; j < image->size_y; j += SIXEL_PIXEL_IN_ONE_LINE) {
         for (uint32_t color = 0; color < sixel->color_cnt; color++) {
-
-            for (uint32_t i = 0; i < image->size_x; i++) {
-
-                for (uint32_t jj = 0; jj < 6; jj++) {
-
+            bool color_init_flag = false;
+            for (uint32_t jj = 0; jj < SIXEL_PIXEL_IN_ONE_LINE; jj++) {
+                for (uint32_t i = 0; i < image->size_x; i++) {
                     if (j + jj < image->size_y) {
                         if (SIXEL_MAS(image->image, image->size_x, image->size_y, i, j + jj) == color) {
-                            subline_bitmap[i][jj] = true;
+                            subbm[i][jj] = true;
+                            color_init_flag = true;
                         } else {
-                            subline_bitmap[i][jj] = false;
+                            subbm[i][jj] = false;
                         }
                     } else {
-                        subline_bitmap[i][jj] = false;
+                        subbm[i][jj] = false;
                     }
-
                 }
             }
+            if (color_init_flag) {
+                out_shift += sprintf(&out_buff[out_shift], "%c%" PRIu32 "", SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER, color);
 
-            out_shift += sprintf(&out_buff[out_shift], "%c%" PRIu32 "", SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER, color);
+                char tmp_buff[image->size_x + 1];
+                int tmp_shift = 0;
 
-            char tmp_buff[image->size_x + 1];
-            int tmp_shift = 0;
+                for (uint32_t i = 0; i < image->size_x; i++) {
+                    tmp_shift += sprintf(&tmp_buff[tmp_shift],
+                                         "%c",
+                                         subbm[i][0] * 1 + subbm[i][1] * 2 + subbm[i][2] * 4 + subbm[i][3] * 8 + subbm[i][4] * 16 + subbm[i][5] * 32 +
+                                             SIXEL_CONTROL_FUNCTIONS_BEG_DATA_CHARACTERS);
+                }
 
-            for (uint32_t i = 0; i < image->size_x; i++) {
-                tmp_shift += sprintf(&tmp_buff[tmp_shift],
-                                     "%c",
-                                     BIT_TO_SUMBOL(subline_bitmap[i][5],
-                                                   subline_bitmap[i][4],
-                                                   subline_bitmap[i][3],
-                                                   subline_bitmap[i][2],
-                                                   subline_bitmap[i][1],
-                                                   subline_bitmap[i][0]));
-            }
+                {
+#if 1
+                    uint32_t cnt = 0;
+                    char first = 0;
+                    char current = 0;
 
-            {
-                uint32_t cnt = 0;
-                char first = 0;
-                char current = 0;
-
-                int i = 0;
-                int j = i;
-                for (i = 0; i < tmp_shift; i = j) {
-                    first = tmp_buff[i];
-                    for (j = i; j < tmp_shift; j++) {
-                        current = tmp_buff[j];
-                        if (current == first) {
-                            cnt++;
-                            continue;
+                    int i = 0;
+                    int j = i;
+                    for (i = 0; i < tmp_shift; i = j) {
+                        first = tmp_buff[i];
+                        for (j = i; j < tmp_shift; j++) {
+                            current = tmp_buff[j];
+                            if (current == first) {
+                                cnt++;
+                                continue;
+                            }
+                            break;
                         }
-                        break;
-                    }
 
-                    if (cnt > 1) {
-                        out_shift += sprintf(&out_buff[out_shift], "%c%u%c", SIXEL_CONTROL_FUNCTIONS_REPET, cnt, first);
-                    } else {
-                        out_shift += sprintf(&out_buff[out_shift], "%c", first);
-                    }
+                        if (cnt > 1) {
+                            out_shift += sprintf(&out_buff[out_shift], "%c%u%c", SIXEL_CONTROL_FUNCTIONS_REPET, cnt, first);
+                        } else {
+                            out_shift += sprintf(&out_buff[out_shift], "%c", first);
+                        }
 
-                    cnt = 0;
+                        cnt = 0;
+                    }
+#else
+                    out_shift += sprintf(&out_buff[out_shift], "%s", tmp_buff);
+#endif
                 }
             }
             out_shift += sprintf(&out_buff[out_shift], "%c", SIXEL_CONTROL_FUNCTIONS_CARRIAGE_RETURN);
@@ -261,14 +257,11 @@ static sixel_color_t rgb_to_greyscale(color_t color) {
 }
 
 static sixel_color_t rgb_to_color216(color_t color) {
+    uint8_t R = (uint8_t)(((((int)(color.R) * 100) / 256) + 10) / 20);
+    uint8_t G = (uint8_t)(((((int)(color.G) * 100) / 256) + 10) / 20);
+    uint8_t B = (uint8_t)(((((int)(color.B) * 100) / 256) + 10) / 20);
 
-    uint8_t R = (uint8_t)((float)(color.R) / (float)(2.56) / (float)(20));
-    uint8_t G = (uint8_t)((float)(color.G) / (float)(2.56) / (float)(20));
-    uint8_t B = (uint8_t)((float)(color.B) / (float)(2.56) / (float)(20));
-
-    uint8_t C = (sixel_color_t)((R) + (6 * G) + (6 * 6 * B));
-
-    return (sixel_color_t)(C);
+    return (sixel_color_t)((R) + (6 * G) + (6 * 6 * B));
 }
 
 bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image) {
@@ -281,8 +274,8 @@ bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, 
 
     switch (model) {
     case SIXEL_COLOR_PALETE_GREYSCALE: {
-        for (int x = 0; x < in_image->size_x; x++) {
-            for (int y = 0; y < in_image->size_y; y++) {
+        for (int y = 0; y < in_image->size_y; y++) {
+            for (int x = 0; x < in_image->size_x; x++) {
                 SIXEL_MAS(out_image->image, out_image->size_x, out_image->size_y, x, y) =
                     rgb_to_greyscale(SIXEL_MAS(in_image->image, in_image->size_x, in_image->size_y, x, y));
             }
@@ -290,8 +283,8 @@ bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, 
         break;
     }
     case SIXEL_COLOR_PALETE_COLOR216: {
-        for (int x = 0; x < in_image->size_x; x++) {
-            for (int y = 0; y < in_image->size_y; y++) {
+        for (int y = 0; y < in_image->size_y; y++) {
+            for (int x = 0; x < in_image->size_x; x++) {
                 SIXEL_MAS(out_image->image, out_image->size_x, out_image->size_y, x, y) =
                     rgb_to_color216(SIXEL_MAS(in_image->image, in_image->size_x, in_image->size_y, x, y));
             }
