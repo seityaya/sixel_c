@@ -1,27 +1,29 @@
 #include "image.h"
 #include "sixel.h"
 
+#include "test_3.h"
 
-#define IMG_SIZE_X  (864)
-#define IMG_SIZE_Y  (80)
+
+#define IMAGE_MAX_SIZE_X 1000
+#define IMAGE_MAX_SIZE_Y 1000
 
 
 static uint32_t color_count = 0;
 static sixel_color_model_t color_map[SIXEL_COLOR_MAX_COUNT] = {0};
 
 
-static sixel_color_t image_buff[IMG_SIZE_X * IMG_SIZE_Y] = {0};
+static sixel_color_t image_buff[NYANCAT_IMAGE_X * NYANCAT_IMAGE_Y] = {0};
 static sixel_image_t image = {
-    .size_x = IMG_SIZE_X,
-    .size_y = IMG_SIZE_Y,
-    .image  = image_buff
+    .size_x = NYANCAT_IMAGE_X,
+    .size_y = NYANCAT_IMAGE_Y,
+    .image = image_buff
 };
 
 
 static sixel_t *sixel = NULL;
 
 
-int test_2_free(void) {
+int test_3_free(void) {
     if (!sixel_free(&sixel)) {
         return -1;
     }
@@ -29,12 +31,12 @@ int test_2_free(void) {
     return 0;
 }
 
-int test_2_init(void) {
+int test_3_init(void) {
     if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_COLOR216, &color_count, color_map)) {
         goto end;
     }
 
-    if (!sixel_init(&sixel, IMG_SIZE_X, IMG_SIZE_Y)) {
+    if (!sixel_init(&sixel, NYANCAT_IMAGE_X, NYANCAT_IMAGE_Y)) {
         goto end;
     }
 
@@ -48,12 +50,17 @@ int test_2_init(void) {
 
     return 0;
 end:
-    test_2_free();
+    test_3_free();
     return -1;
 }
 
-int test_2_loop(uint32_t type) {
-    build_image_map(&image, color_count, type);
+int test_3_loop(uint32_t type) {
+    static int i = 0;
+    i++;
+
+    if (!sixel_image_color_img_build(SIXEL_COLOR_PALETE_COLOR216, &nyancat_gif[i % NYANCAT_IMAGE_COUNT], &image)) {
+        goto end;
+    }
 
     if (!sixel_draw(sixel, &image)) {
         goto end;
@@ -61,6 +68,6 @@ int test_2_loop(uint32_t type) {
 
     return 0;
 end:
-    test_2_free();
+    test_3_free();
     return -1;
 }

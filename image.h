@@ -3,11 +3,9 @@
 
 #include "sixel.h"
 
-void image_clear(int x, int y, sixel_color_t *image);
-void image_print(int x, int y, sixel_color_t *image);
+void image_clear(sixel_image_t *image);
+void image_print(sixel_image_t *image);
 
-void build_image_map(int x, int y, sixel_color_t *image, int color_cnt, sixel_color_t colormap[color_cnt]);
-void build_image_mod(int x, int y, sixel_color_t *image);
-void build_image_cat(int x, int y, sixel_color_t *image);
+void build_image_map(sixel_image_t *image, uint32_t color_count, uint32_t type);
 
-#endif // IMAGE_H
+#endif /*IMAGE_H*/
