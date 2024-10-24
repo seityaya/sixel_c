@@ -5,13 +5,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define SIXEL_RGB(r, g, b) (sixel_color_model_t){.PX = 0,         .Px = (r),       .Py = (g), .Pz = (b)}
-#define SIXEL_HSL(h, l, s) (sixel_color_model_t){.PX = ((h)/255), .Px = ((h)%255), .Py = (l), .Pz = (s)}
+#define SIXEL_MAS(m, x_size, y_size, x, y) m[((x_size)*(y)) + (x)]
+
+#define SIXEL_RGB(r, g, b) (sixel_color_model_t){.PX = 0        , .Px = (r)      , .Py = (g), .Pz = (b)}
+#define SIXEL_HLS(h, l, s) (sixel_color_model_t){.PX = ((h)/255), .Px = ((h)%255), .Py = (l), .Pz = (s)}
 
 typedef enum {
-    SIXEL_MAX_SIZE_IMAGE_X = 1000,
-    SIXEL_MAX_SIZE_IMAGE_Y = 9999,
-    SIXEL_MAX_COLOR_COUNT  = 256,
+    SIXEL_SIZE_MAX_IMAGE_X = 1000,
+    SIXEL_SIZE_MAX_IMAGE_Y = 9999,
+    SIXEL_COLOR_MAX_COUNT  = 256,
 } sixel_constant_e;
 
 typedef enum {
@@ -57,6 +59,19 @@ typedef enum {
     SIXEL_COLOR_MODEL_RGB = 2,
 } sixel_color_model_e;
 
+typedef enum {
+    SIXEL_COLOR_MODEL_RGB_MAX_R = 100,
+    SIXEL_COLOR_MODEL_RGB_MAX_G = 100,
+    SIXEL_COLOR_MODEL_RGB_MAX_B = 100,
+} sixel_color_model_rgb_e;
+
+typedef enum {
+    SIXEL_COLOR_MODEL_HLS_MAX_H = 360,
+    SIXEL_COLOR_MODEL_HLS_MAX_L = 100,
+    SIXEL_COLOR_MODEL_HLS_MAX_S = 100,
+} sixel_color_model_hls_e;
+
+
 typedef struct __attribute__((packed)) {
     uint8_t PX;
     uint8_t Px;
@@ -64,38 +79,63 @@ typedef struct __attribute__((packed)) {
     uint8_t Pz;
 } sixel_color_model_t;
 
-typedef struct {
-    union {
-        sixel_color_model_t model;
-        uint32_t            color;
-    };
-} sixel_color_t;
+typedef uint8_t sixel_color_t;
 
 typedef struct {
-    int                  out_buff_len;
-    int                  out_buff_shift;
-    int                  out_buff_shift_init;
-    char                *out_buff;
+    uint32_t       size_y;
+    uint32_t       size_x;
+    sixel_color_t *image;
+} sixel_image_t;
 
-    unsigned int         max_size_x;
-    unsigned int         max_size_y;
+typedef struct {
+    uint32_t  out_buff_len;
+    uint32_t  out_buff_shift;
+    uint32_t  out_buff_shift_init;
+    char     *out_buff;
 
+    uint32_t  max_size_x;
+    uint32_t  max_size_y;
+
+    uint32_t             color_cnt;
     sixel_color_model_e  color_mod;
-    unsigned int         color_cnt;
-    sixel_color_t       *color_map;
+    sixel_color_model_t *color_map;
 } sixel_t;
 
-bool sixel_color(int *color_cnt, sixel_color_t *color_map);
 
-bool sixel_init(sixel_t **sixel, unsigned int max_size_x, unsigned int max_size_y);
-
-bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, unsigned int color_cnt, sixel_color_t color_map[color_cnt]);
-
+bool sixel_init(sixel_t **sixel, uint32_t max_size_x, uint32_t max_size_y);
+bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint32_t color_cnt, sixel_color_model_t *color_map);
 bool sixel_draw_init(sixel_t *sixel);
-bool sixel_draw(sixel_t *sixel, int size_x, int size_y, sixel_color_t image[size_x * size_y]);
-
+bool sixel_draw(sixel_t *sixel, sixel_image_t *image);
 bool sixel_free(sixel_t **sixel);
 
+//***********************************************************************************************************************
+
+typedef enum {
+    SIXEL_COLOR_PALETE_GREYSCALE  = 1,
+    SIXEL_COLOR_PALETE_COLOR216 = 2,
+} sixel_color_palete_e;
+
+typedef struct {
+    union {
+        struct __attribute__((packed)) {
+            uint8_t A;
+            uint8_t B;
+            uint8_t G;
+            uint8_t R;
+        };
+        uint32_t C;
+    };
+} color_t;
+
+typedef struct {
+    uint32_t  size_x;
+    uint32_t  size_y;
+    color_t  *image;
+} image_t;
+
+bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint32_t *out_color_count, sixel_color_model_t *out_color_map);
+
+bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image);
 
 #endif /*SIXEL_H*/
 
