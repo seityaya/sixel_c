@@ -21,7 +21,7 @@ static sixel_color_model_t color_map[] = {
     SIXEL_RGB(33, 60, 60), /* 13 Cyan*    */
     SIXEL_RGB(60, 60, 33), /* 14 Yellow*  */
     SIXEL_RGB(80, 80, 80), /* 15 Gray 75% */
-    SIXEL_RGB(99, 99, 99), /* 16 White    */  //TODO: перепроверить цвета
+    SIXEL_RGB(99, 99, 99), /* 16 White    */  //TODO: Перепроверить цвета
 };
 static int color_count = (sizeof(color_map) / sizeof(color_map[0]));
 

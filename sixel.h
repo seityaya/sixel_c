@@ -11,9 +11,10 @@
 #define SIXEL_HLS(h, l, s) (sixel_color_model_t){.PX = ((h)/255), .Px = ((h)%255), .Py = (l), .Pz = (s)}
 
 typedef enum {
-    SIXEL_SIZE_MAX_IMAGE_X = 1000,
-    SIXEL_SIZE_MAX_IMAGE_Y = 9999,
-    SIXEL_COLOR_MAX_COUNT  = 256,
+    SIXEL_PIXEL_IN_ONE_LINE = 6,
+    SIXEL_SIZE_MAX_IMAGE_X  = 1000,
+    SIXEL_SIZE_MAX_IMAGE_Y  = 9999,
+    SIXEL_COLOR_MAX_COUNT   = 256,
 } sixel_constant_e;
 
 typedef enum {
