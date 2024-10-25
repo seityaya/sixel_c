@@ -3,18 +3,18 @@
 
 #include "sixel.h"
 
-#include "raw/nyancat/1.h"
-#include "raw/nyancat/2.h"
-#include "raw/nyancat/3.h"
-#include "raw/nyancat/4.h"
-#include "raw/nyancat/5.h"
-#include "raw/nyancat/6.h"
-#include "raw/nyancat/7.h"
-#include "raw/nyancat/8.h"
-#include "raw/nyancat/9.h"
-#include "raw/nyancat/10.h"
-#include "raw/nyancat/11.h"
-#include "raw/nyancat/12.h"
+#include "assets/nyancat/1.h"
+#include "assets/nyancat/2.h"
+#include "assets/nyancat/3.h"
+#include "assets/nyancat/4.h"
+#include "assets/nyancat/5.h"
+#include "assets/nyancat/6.h"
+#include "assets/nyancat/7.h"
+#include "assets/nyancat/8.h"
+#include "assets/nyancat/9.h"
+#include "assets/nyancat/10.h"
+#include "assets/nyancat/11.h"
+#include "assets/nyancat/12.h"
 
 
 #define NYANCAT_IMAGE_X 400
@@ -39,8 +39,8 @@ static image_t nyancat_gif[] = {
 
 
 
-#include "raw/color216/1.h"
-#include "raw/color216/2.h"
+#include "assets/color216/1.h"
+#include "assets/color216/2.h"
 
 
 #define RAINBOW216_IMAGE_H_X 864
