@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool sixel_init(sixel_t **sixel, uint32_t max_size_x, uint32_t max_size_y) {
+bool sixel_init(sixel_t **sixel, uint_fast32_t max_size_x, uint_fast32_t max_size_y) {
     if (sixel == NULL) {
         return false;
     }
@@ -20,18 +20,24 @@ bool sixel_init(sixel_t **sixel, uint32_t max_size_x, uint32_t max_size_y) {
         return false;
     }
 
-    (*sixel) = (sixel_t *)calloc(1, sizeof(sixel_t));
+    (*sixel) = (sixel_t *)malloc(sizeof(sixel_t));
 
+    (*sixel)->out_buff_shift = 0;
+    (*sixel)->out_buff_shift_init = 0;
     (*sixel)->out_buff_len = (max_size_x * max_size_y) * 20 + 1; // TODO: Придумать эвристику лучше
     (*sixel)->out_buff = (char *)calloc((*sixel)->out_buff_len, sizeof(char));
 
     (*sixel)->max_size_x = max_size_x;
     (*sixel)->max_size_y = max_size_y;
 
+    (*sixel)->color_mod = 0;
+    (*sixel)->color_cnt = 0;
+    (*sixel)->color_map = NULL;
+
     return true;
 }
 
-bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint32_t color_cnt, sixel_color_model_t *color_map) {
+bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint_fast32_t color_cnt, sixel_color_model_t *color_map) {
     if (sixel == NULL) {
         return false;
     }
@@ -64,7 +70,7 @@ bool sixel_draw_init(sixel_t *sixel) {
         return false;
     }
 
-    int out_shift = 0;
+    uint_fast32_t out_shift = 0;
     char *out_buff = sixel->out_buff;
 
     // Запуск последовательности Sixel
@@ -82,12 +88,12 @@ bool sixel_draw_init(sixel_t *sixel) {
     // Pad
     out_shift += sprintf(&out_buff[out_shift], "%d%c", SIXEL_RASTER_ATTRIBUTES_PAD_DEF, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
     // Ph max size
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", sixel->max_size_x, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    out_shift += sprintf(&out_buff[out_shift], "%"PRIuFAST32"%c", sixel->max_size_x, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
     // Pv max size
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", sixel->max_size_y, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    out_shift += sprintf(&out_buff[out_shift], "%"PRIuFAST32"%c", sixel->max_size_y, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
 
     // Установка цветовой палитры
-    for (uint32_t i = 0; i < sixel->color_cnt; i++) {
+    for (uint_fast8_t i = 0; i < sixel->color_cnt; i++) {
         out_shift += sprintf(&out_buff[out_shift],
                              "%c%" PRIu8 "%c%" PRIu8 "%c%" PRIu8 "%c%" PRIu8 "%c%" PRIu8 "",
                              SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER,
@@ -102,9 +108,32 @@ bool sixel_draw_init(sixel_t *sixel) {
                              sixel->color_map[i].Pz);
     }
 
-    sixel->out_buff_shift_init = (uint32_t)(out_shift);
+    sixel->out_buff_shift_init = out_shift;
 
     return true;
+}
+
+static uint_fast32_t uint_to_str(char *buff, uint_fast32_t uint_value) {
+    uint_fast32_t t = uint_value;
+    uint_fast32_t n = 0;
+    do {
+        t /= 10;
+        n++;
+    } while (t != 0);
+
+    buff += n + 1;
+    *--buff = 0;
+    do {
+        *--buff = uint_value % 10 + '0';
+        uint_value /= 10;
+    } while (uint_value != 0);
+    return n;
+}
+
+static uint_fast32_t char_to_str(char *buff, char char_value) {
+    buff[0] = char_value;
+    buff[1] = '\0';
+    return 1;
 }
 
 bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
@@ -120,14 +149,14 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
 
     bool subbm[image->size_x][SIXEL_PIXEL_IN_ONE_LINE];
 
-    int out_shift = (int)(sixel->out_buff_shift_init);
+    uint_fast32_t out_shift = sixel->out_buff_shift_init;
     char *out_buff = sixel->out_buff;
 
-    for (uint32_t j = 0; j < image->size_y; j += SIXEL_PIXEL_IN_ONE_LINE) {
-        for (uint32_t color = 0; color < sixel->color_cnt; color++) {
+    for (uint_fast32_t j = 0; j < image->size_y; j += SIXEL_PIXEL_IN_ONE_LINE) {
+        for (uint_fast8_t color = 0; color < sixel->color_cnt; color++) {
             bool color_init_flag = false;
-            for (uint32_t jj = 0; jj < SIXEL_PIXEL_IN_ONE_LINE; jj++) {
-                for (uint32_t i = 0; i < image->size_x; i++) {
+            for (uint_fast32_t jj = 0; jj < SIXEL_PIXEL_IN_ONE_LINE; jj++) {
+                for (uint_fast32_t i = 0; i < image->size_x; i++) {
                     if (j + jj < image->size_y) {
                         if (SIXEL_MAS(image->image, image->size_x, image->size_y, i, j + jj) == color) {
                             subbm[i][jj] = true;
@@ -141,26 +170,26 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
                 }
             }
             if (color_init_flag) {
-                out_shift += sprintf(&out_buff[out_shift], "%c%" PRIu32 "", SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER, color);
+                out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER);
+                out_shift += uint_to_str(&out_buff[out_shift], color);
 
                 char tmp_buff[image->size_x + 1];
-                int tmp_shift = 0;
+                uint_fast32_t tmp_shift = 0;
 
-                for (uint32_t i = 0; i < image->size_x; i++) {
-                    tmp_shift += sprintf(&tmp_buff[tmp_shift],
-                                         "%c",
-                                         subbm[i][0] * 1 + subbm[i][1] * 2 + subbm[i][2] * 4 + subbm[i][3] * 8 + subbm[i][4] * 16 + subbm[i][5] * 32 +
-                                             SIXEL_CONTROL_FUNCTIONS_BEG_DATA_CHARACTERS);
+                for (uint_fast32_t i = 0; i < image->size_x; i++) {
+                    tmp_shift += char_to_str(&tmp_buff[tmp_shift],
+                                             subbm[i][0] * 1 + subbm[i][1] * 2 + subbm[i][2] * 4 + subbm[i][3] * 8 + subbm[i][4] * 16 +
+                                                 subbm[i][5] * 32 + SIXEL_CONTROL_FUNCTIONS_BEG_DATA_CHARACTERS);
                 }
 
                 {
 #if 1
-                    uint32_t cnt = 0;
+                    uint_fast32_t cnt = 0;
                     char first = 0;
                     char current = 0;
 
-                    int i = 0;
-                    int j = i;
+                    uint_fast32_t i = 0;
+                    uint_fast32_t j = i;
                     for (i = 0; i < tmp_shift; i = j) {
                         first = tmp_buff[i];
                         for (j = i; j < tmp_shift; j++) {
@@ -173,9 +202,11 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
                         }
 
                         if (cnt > 1) {
-                            out_shift += sprintf(&out_buff[out_shift], "%c%u%c", SIXEL_CONTROL_FUNCTIONS_REPET, cnt, first);
+                            out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_REPET);
+                            out_shift += uint_to_str(&out_buff[out_shift], cnt);
+                            out_shift += char_to_str(&out_buff[out_shift], first);
                         } else {
-                            out_shift += sprintf(&out_buff[out_shift], "%c", first);
+                            out_shift += char_to_str(&out_buff[out_shift], first);
                         }
 
                         cnt = 0;
@@ -185,14 +216,15 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
 #endif
                 }
             }
-            out_shift += sprintf(&out_buff[out_shift], "%c", SIXEL_CONTROL_FUNCTIONS_CARRIAGE_RETURN);
+            out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_CARRIAGE_RETURN);
         }
-        out_shift += sprintf(&out_buff[out_shift], "%c", SIXEL_CONTROL_FUNCTIONS_NEW_LINE);
+        out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_NEW_LINE);
     }
 
-    out_shift += sprintf(&out_buff[out_shift], "%c%c", SIXEL_CONTROL_FUNCTIONS_ESCAPE, SIXEL_CONTROL_FUNCTIONS_STRING_TERMINATOR);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_ESCAPE);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_STRING_TERMINATOR);
 
-    sixel->out_buff_shift = (uint32_t)(out_shift);
+    sixel->out_buff_shift = out_shift;
 
     printf("%s", out_buff);
     fflush(stdout);
@@ -200,21 +232,21 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
     return true;
 }
 
-bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint32_t *out_color_count, sixel_color_model_t *color_map) {
+bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint_fast8_t* out_color_count, sixel_color_model_t *color_map) {
     switch (model) {
     case SIXEL_COLOR_PALETE_GREYSCALE: {
-        *out_color_count = SIXEL_COLOR_MAX_COUNT;
-        for (int k = 0; k < SIXEL_COLOR_MAX_COUNT; k++) {
-            int c = (k / 2.56);
+        *out_color_count = SIXEL_COLOR_MAX_COUNT - 1;
+        for (uint_fast32_t k = 0; k < SIXEL_COLOR_MAX_COUNT; k++) {
+            uint_fast32_t c = (k * 256) / 100;
             color_map[k] = SIXEL_RGB(c, c, c);
         }
         break;
     }
-    case SIXEL_COLOR_PALETE_COLOR216: {
-        int n = 0;
-        for (int k = 0; k <= SIXEL_COLOR_MODEL_RGB_MAX_B; k += 20) {
-            for (int j = 0; j <= SIXEL_COLOR_MODEL_RGB_MAX_G; j += 20) {
-                for (int i = 0; i <= SIXEL_COLOR_MODEL_RGB_MAX_R; i += 20) {
+    case SIXEL_COLOR_PALETE_RGB216: {
+        uint_fast32_t n = 0;
+        for (uint_fast32_t k = 0; k <= SIXEL_COLOR_MODEL_RGB_MAX_B; k += 20) {
+            for (uint_fast32_t j = 0; j <= SIXEL_COLOR_MODEL_RGB_MAX_G; j += 20) {
+                for (uint_fast32_t i = 0; i <= SIXEL_COLOR_MODEL_RGB_MAX_R; i += 20) {
                     color_map[n++] = SIXEL_RGB(i, j, k);
                 }
             }
@@ -257,9 +289,9 @@ static sixel_color_t rgb_to_greyscale(color_t color) {
 }
 
 static sixel_color_t rgb_to_color216(color_t color) {
-    uint8_t R = (uint8_t)(((((int)(color.R) * 100) / 256) + 10) / 20);
-    uint8_t G = (uint8_t)(((((int)(color.G) * 100) / 256) + 10) / 20);
-    uint8_t B = (uint8_t)(((((int)(color.B) * 100) / 256) + 10) / 20);
+    uint8_t R = (uint8_t)(((((uint_fast32_t)(color.R) * 100) / 256) + 10) / 20);
+    uint8_t G = (uint8_t)(((((uint_fast32_t)(color.G) * 100) / 256) + 10) / 20);
+    uint8_t B = (uint8_t)(((((uint_fast32_t)(color.B) * 100) / 256) + 10) / 20);
 
     return (sixel_color_t)((R) + (6 * G) + (6 * 6 * B));
 }
@@ -274,17 +306,17 @@ bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, 
 
     switch (model) {
     case SIXEL_COLOR_PALETE_GREYSCALE: {
-        for (int y = 0; y < in_image->size_y; y++) {
-            for (int x = 0; x < in_image->size_x; x++) {
+        for (uint_fast32_t y = 0; y < in_image->size_y; y++) {
+            for (uint_fast32_t x = 0; x < in_image->size_x; x++) {
                 SIXEL_MAS(out_image->image, out_image->size_x, out_image->size_y, x, y) =
                     rgb_to_greyscale(SIXEL_MAS(in_image->image, in_image->size_x, in_image->size_y, x, y));
             }
         }
         break;
     }
-    case SIXEL_COLOR_PALETE_COLOR216: {
-        for (int y = 0; y < in_image->size_y; y++) {
-            for (int x = 0; x < in_image->size_x; x++) {
+    case SIXEL_COLOR_PALETE_RGB216: {
+        for (uint_fast32_t y = 0; y < in_image->size_y; y++) {
+            for (uint_fast32_t x = 0; x < in_image->size_x; x++) {
                 SIXEL_MAS(out_image->image, out_image->size_x, out_image->size_y, x, y) =
                     rgb_to_color216(SIXEL_MAS(in_image->image, in_image->size_x, in_image->size_y, x, y));
             }

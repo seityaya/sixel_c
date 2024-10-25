@@ -6,7 +6,7 @@
 #define IMG_SIZE_Y  (80)
 
 
-static uint32_t color_count = 0;
+static uint_fast8_t color_count = 0;
 static sixel_color_model_t color_map[SIXEL_COLOR_MAX_COUNT] = {0};
 
 
@@ -30,7 +30,7 @@ int test_2_free(void) {
 }
 
 int test_2_init(void) {
-    if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_COLOR216, &color_count, color_map)) {
+    if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_RGB216, &color_count, color_map)) {
         goto end;
     }
 

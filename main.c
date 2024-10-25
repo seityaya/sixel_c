@@ -24,7 +24,7 @@ extern int test_3_free(void);
 
 int main(int argc, char *argv[]) {
     //*******************************************************
-    uint32_t test_cycles = 20;
+    uint32_t test_cycles = 1000;
     uint64_t test_frame_fps_milisec = 1;
 
     uint32_t test_number = 3; // 1 - 3
@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    realtime_t tot_beg = get_time_real();
     for (int i = 1; i <= test_cycles; ++i) {
         printf(CONSOLE_SETCURSORBEG);
 
@@ -103,10 +104,12 @@ int main(int argc, char *argv[]) {
 
         printf("[frame]\n");
         printf("elapsed time: %15.10Lf ticks, frame time: %15.10Lf\n", time_convert(time_dif(cen, beg)), time_convert(time_dif(end, beg)));
-        printf("cycle count: %d ticks\n", i);
+        printf("cycle count: %d iteration\n", i);
         fflush(stdout);
     }
+    realtime_t tot_end = get_time_real();
 
+    printf("total time: %15.10Lf\n", time_convert(time_dif(tot_end, tot_beg)));
     printf("[average]\n");
     printf("elapsed time: %15.10Lf ticks, frame time: %15.10Lf\n", average_loop_time / test_cycles, average_frame_time / test_cycles);
 

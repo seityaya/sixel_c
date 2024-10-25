@@ -8,7 +8,7 @@
 #define IMAGE_MAX_SIZE_Y 1000
 
 
-static uint32_t color_count = 0;
+static uint_fast8_t color_count = 0;
 static sixel_color_model_t color_map[SIXEL_COLOR_MAX_COUNT] = {0};
 
 
@@ -32,7 +32,7 @@ int test_3_free(void) {
 }
 
 int test_3_init(void) {
-    if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_COLOR216, &color_count, color_map)) {
+    if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_RGB216, &color_count, color_map)) {
         goto end;
     }
 
@@ -58,7 +58,7 @@ int test_3_loop(uint32_t type) {
     static int i = 0;
     i++;
 
-    if (!sixel_image_color_img_build(SIXEL_COLOR_PALETE_COLOR216, &nyancat_gif[i % NYANCAT_IMAGE_COUNT], &image)) {
+    if (!sixel_image_color_img_build(SIXEL_COLOR_PALETE_RGB216, &nyancat_gif[i % NYANCAT_IMAGE_COUNT], &image)) {
         goto end;
     }
 

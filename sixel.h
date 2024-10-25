@@ -83,28 +83,28 @@ typedef struct __attribute__((packed)) {
 typedef uint8_t sixel_color_t;
 
 typedef struct {
-    uint32_t       size_y;
-    uint32_t       size_x;
+    uint_fast32_t  size_y;
+    uint_fast32_t  size_x;
     sixel_color_t *image;
 } sixel_image_t;
 
 typedef struct {
-    uint32_t  out_buff_len;
-    uint32_t  out_buff_shift;
-    uint32_t  out_buff_shift_init;
-    char     *out_buff;
+    uint_fast32_t  out_buff_len;
+    uint_fast32_t  out_buff_shift;
+    uint_fast32_t  out_buff_shift_init;
+    char          *out_buff;
 
-    uint32_t  max_size_x;
-    uint32_t  max_size_y;
+    uint_fast32_t  max_size_x;
+    uint_fast32_t  max_size_y;
 
-    uint32_t             color_cnt;
+    uint_fast8_t         color_cnt;
     sixel_color_model_e  color_mod;
     sixel_color_model_t *color_map;
 } sixel_t;
 
 
-bool sixel_init(sixel_t **sixel, uint32_t max_size_x, uint32_t max_size_y);
-bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint32_t color_cnt, sixel_color_model_t *color_map);
+bool sixel_init(sixel_t **sixel, uint_fast32_t max_size_x, uint_fast32_t max_size_y);
+bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint_fast32_t color_cnt, sixel_color_model_t *color_map);
 bool sixel_draw_init(sixel_t *sixel);
 bool sixel_draw(sixel_t *sixel, sixel_image_t *image);
 bool sixel_free(sixel_t **sixel);
@@ -113,7 +113,7 @@ bool sixel_free(sixel_t **sixel);
 
 typedef enum {
     SIXEL_COLOR_PALETE_GREYSCALE  = 1,
-    SIXEL_COLOR_PALETE_COLOR216 = 2,
+    SIXEL_COLOR_PALETE_RGB216     = 2,
 } sixel_color_palete_e;
 
 typedef struct {
@@ -129,12 +129,12 @@ typedef struct {
 } color_t;
 
 typedef struct {
-    uint32_t  size_x;
-    uint32_t  size_y;
-    color_t  *image;
+    uint_fast32_t  size_x;
+    uint_fast32_t  size_y;
+    color_t       *image;
 } image_t;
 
-bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint32_t *out_color_count, sixel_color_model_t *out_color_map);
+bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint_fast8_t* out_color_count, sixel_color_model_t *out_color_map);
 
 bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image);
 
