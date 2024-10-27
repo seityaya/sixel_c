@@ -30,7 +30,7 @@ int test_2_free(void) {
 }
 
 int test_2_init(void) {
-    if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_RGB216, &color_count, color_map)) {
+    if (!sixel_build_color_map_palete(SIXEL_COLOR_PALETE_RGB216, &color_count, color_map)) {
         goto end;
     }
 
@@ -42,7 +42,7 @@ int test_2_init(void) {
         goto end;
     }
 
-    if (!sixel_draw_init(sixel)) {
+    if (!sixel_frame_init(sixel)) {
         goto end;
     }
 
@@ -55,7 +55,7 @@ end:
 int test_2_loop(uint32_t type) {
     build_image_map(&image, color_count, type);
 
-    if (!sixel_draw(sixel, &image)) {
+    if (!sixel_frame_draw(sixel, &image)) {
         goto end;
     }
 

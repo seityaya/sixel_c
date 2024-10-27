@@ -32,7 +32,7 @@ int test_3_free(void) {
 }
 
 int test_3_init(void) {
-    if (!sixel_image_color_map_palete_build(SIXEL_COLOR_PALETE_RGB216, &color_count, color_map)) {
+    if (!sixel_build_color_map_palete(SIXEL_COLOR_PALETE_RGB216, &color_count, color_map)) {
         goto end;
     }
 
@@ -44,7 +44,7 @@ int test_3_init(void) {
         goto end;
     }
 
-    if (!sixel_draw_init(sixel)) {
+    if (!sixel_frame_init(sixel)) {
         goto end;
     }
 
@@ -58,11 +58,11 @@ int test_3_loop(uint32_t type) {
     static int i = 0;
     i++;
 
-    if (!sixel_image_color_img_build(SIXEL_COLOR_PALETE_RGB216, &nyancat_gif[i % NYANCAT_IMAGE_COUNT], &image)) {
+    if (!sixel_frame_conv(SIXEL_COLOR_PALETE_RGB216, &nyancat_gif[i % NYANCAT_IMAGE_COUNT], &image)) {
         goto end;
     }
 
-    if (!sixel_draw(sixel, &image)) {
+    if (!sixel_frame_draw(sixel, &image)) {
         goto end;
     }
 

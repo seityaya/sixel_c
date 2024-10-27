@@ -19,7 +19,7 @@ extern int test_3_free(void);
 #define CONSOLE_VIEW_CURSOR "\e[?25h"
 
 #define CONSOLE_CLEAR "\e[2J"
-#define CONSOLE_SETCURSORBEG "\e[H"
+#define CONSOLE_SETCURSOR(x, y) "\e[" #x";" #y "H"
 #define CONCOLE_PADING "\n\n\n     "
 
 int main(int argc, char *argv[]) {
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 
     realtime_t tot_beg = get_time_real();
     for (int i = 1; i <= test_cycles; ++i) {
-        printf(CONSOLE_SETCURSORBEG);
+        printf(CONSOLE_SETCURSOR(0, 0));
 
         beg = get_time_real();
         switch (test_number) {

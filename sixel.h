@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define SIXEL_MAS(m, x_size, y_size, x, y) m[((x_size)*(y)) + (x)]
+#define SIXEL_MAS(m, x_size, y_size, x, y) m[ (((x_size)*(y)) + (x)) ]
 
 #define SIXEL_RGB(r, g, b) (sixel_color_model_t){.PX = 0        , .Px = (r)      , .Py = (g), .Pz = (b)}
 #define SIXEL_HLS(h, l, s) (sixel_color_model_t){.PX = ((h)/255), .Px = ((h)%255), .Py = (l), .Pz = (s)}
@@ -104,9 +104,9 @@ typedef struct {
 
 
 bool sixel_init(sixel_t **sixel, uint_fast32_t max_size_x, uint_fast32_t max_size_y);
-bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint_fast32_t color_cnt, sixel_color_model_t *color_map);
-bool sixel_draw_init(sixel_t *sixel);
-bool sixel_draw(sixel_t *sixel, sixel_image_t *image);
+bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint_fast8_t color_cnt, sixel_color_model_t *color_map);
+bool sixel_frame_init(sixel_t *sixel);
+bool sixel_frame_draw(sixel_t *sixel, sixel_image_t *image);
 bool sixel_free(sixel_t **sixel);
 
 //***********************************************************************************************************************
@@ -134,9 +134,9 @@ typedef struct {
     color_t       *image;
 } image_t;
 
-bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint_fast8_t* out_color_count, sixel_color_model_t *out_color_map);
+bool sixel_build_color_map_palete(sixel_color_palete_e model, uint_fast8_t* out_color_count, sixel_color_model_t *out_color_map);
 
-bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image);
+bool sixel_frame_conv(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image);
 
 #endif /*SIXEL_H*/
 

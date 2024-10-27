@@ -1,10 +1,7 @@
 #include "sixel.h"
 
-#include <inttypes.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 bool sixel_init(sixel_t **sixel, uint_fast32_t max_size_x, uint_fast32_t max_size_y) {
     if (sixel == NULL) {
@@ -20,11 +17,12 @@ bool sixel_init(sixel_t **sixel, uint_fast32_t max_size_x, uint_fast32_t max_siz
         return false;
     }
 
-    (*sixel) = (sixel_t *)malloc(sizeof(sixel_t));
+    (*sixel) = (sixel_t *)calloc(1, sizeof(sixel_t));
 
     (*sixel)->out_buff_shift = 0;
     (*sixel)->out_buff_shift_init = 0;
     (*sixel)->out_buff_len = (max_size_x * max_size_y) * 20 + 1; // TODO: Придумать эвристику лучше
+
     (*sixel)->out_buff = (char *)calloc((*sixel)->out_buff_len, sizeof(char));
 
     (*sixel)->max_size_x = max_size_x;
@@ -37,11 +35,11 @@ bool sixel_init(sixel_t **sixel, uint_fast32_t max_size_x, uint_fast32_t max_siz
     return true;
 }
 
-bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint_fast32_t color_cnt, sixel_color_model_t *color_map) {
+bool sixel_cmap_init(sixel_t *sixel, sixel_color_model_e color_mod, uint_fast8_t color_cnt, sixel_color_model_t *color_map) {
     if (sixel == NULL) {
         return false;
     }
-    if (color_cnt > SIXEL_COLOR_MAX_COUNT) {
+    if (color_cnt > (SIXEL_COLOR_MAX_COUNT - 1)) {
         return false;
     }
 
@@ -59,67 +57,21 @@ bool sixel_free(sixel_t **sixel) {
     if (*sixel == NULL) {
         return false;
     }
+
     free((*sixel)->out_buff);
     free((*sixel));
     *sixel = NULL;
-    return true;
-}
-
-bool sixel_draw_init(sixel_t *sixel) {
-    if (sixel == NULL) {
-        return false;
-    }
-
-    uint_fast32_t out_shift = 0;
-    char *out_buff = sixel->out_buff;
-
-    // Запуск последовательности Sixel
-    out_shift += sprintf(&out_buff[out_shift], "%c%c", SIXEL_CONTROL_FUNCTIONS_ESCAPE, SIXEL_CONTROL_FUNCTIONS_BEG_PARAM_CHARACTERS);
-    // Параметры пикселя
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", SIXEL_PIXEL_ASPERO_RATIO_DEF, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-    // Цвет фона
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", SIXEL_PIXEL_BACKGRAUND_COLOR_DEF, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-    // Размер сетки
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", SIXEL_HORIZONTAL_GRID_SIZE_DEF, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-    // Начало команд sixel
-    out_shift += sprintf(&out_buff[out_shift], "%c%c", SIXEL_CONTROL_FUNCTIONS_BEG_COMAND_CHARACTERS, SIXEL_CONTROL_FUNCTIONS_RASTER_ATTRIBUTES);
-    // Pan
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", SIXEL_RASTER_ATTRIBUTES_PAN_DEF, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-    // Pad
-    out_shift += sprintf(&out_buff[out_shift], "%d%c", SIXEL_RASTER_ATTRIBUTES_PAD_DEF, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-    // Ph max size
-    out_shift += sprintf(&out_buff[out_shift], "%"PRIuFAST32"%c", sixel->max_size_x, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-    // Pv max size
-    out_shift += sprintf(&out_buff[out_shift], "%"PRIuFAST32"%c", sixel->max_size_y, SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
-
-    // Установка цветовой палитры
-    for (uint_fast8_t i = 0; i < sixel->color_cnt; i++) {
-        out_shift += sprintf(&out_buff[out_shift],
-                             "%c%" PRIu8 "%c%" PRIu8 "%c%" PRIu8 "%c%" PRIu8 "%c%" PRIu8 "",
-                             SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER,
-                             i,
-                             SIXEL_CONTROL_FUNCTIONS_SEPARATOR,
-                             sixel->color_mod,
-                             SIXEL_CONTROL_FUNCTIONS_SEPARATOR,
-                             sixel->color_map[i].PX * 255 + sixel->color_map[i].Px,
-                             SIXEL_CONTROL_FUNCTIONS_SEPARATOR,
-                             sixel->color_map[i].Py,
-                             SIXEL_CONTROL_FUNCTIONS_SEPARATOR,
-                             sixel->color_map[i].Pz);
-    }
-
-    sixel->out_buff_shift_init = out_shift;
 
     return true;
 }
 
 static uint_fast32_t uint_to_str(char *buff, uint_fast32_t uint_value) {
-    uint_fast32_t t = uint_value;
+    uint_fast32_t temp_value = uint_value;
     uint_fast32_t n = 0;
     do {
-        t /= 10;
+        temp_value /= 10;
         n++;
-    } while (t != 0);
+    } while (temp_value != 0);
 
     buff += n + 1;
     *--buff = 0;
@@ -136,7 +88,62 @@ static uint_fast32_t char_to_str(char *buff, char char_value) {
     return 1;
 }
 
-bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
+bool sixel_frame_init(sixel_t *sixel) {
+    if (sixel == NULL) {
+        return false;
+    }
+
+    uint_fast32_t out_shift = 0;
+    char *out_buff = sixel->out_buff;
+
+    // Запуск последовательности Sixel
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_ESCAPE);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_BEG_PARAM_CHARACTERS);
+    // Параметры пикселя
+    out_shift += uint_to_str(&out_buff[out_shift], SIXEL_PIXEL_ASPERO_RATIO_DEF);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    // Цвет фона
+    out_shift += uint_to_str(&out_buff[out_shift], SIXEL_PIXEL_BACKGRAUND_COLOR_DEF);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    // Размер сетки
+    out_shift += uint_to_str(&out_buff[out_shift], SIXEL_HORIZONTAL_GRID_SIZE_DEF);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    // Начало команд sixel
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_BEG_COMAND_CHARACTERS);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_RASTER_ATTRIBUTES);
+    // Pan
+    out_shift += uint_to_str(&out_buff[out_shift], SIXEL_RASTER_ATTRIBUTES_PAN_DEF);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    // Pad
+    out_shift += uint_to_str(&out_buff[out_shift], SIXEL_RASTER_ATTRIBUTES_PAD_DEF);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    // Ph max size
+    out_shift += uint_to_str(&out_buff[out_shift], sixel->max_size_x);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+    // Pv max size
+    out_shift += uint_to_str(&out_buff[out_shift], sixel->max_size_y);
+    out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+
+    // Установка цветовой палитры
+    for (uint_fast8_t i = 0; i < sixel->color_cnt; i++) {
+        out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER);
+        out_shift += uint_to_str(&out_buff[out_shift], i);
+        out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+        out_shift += uint_to_str(&out_buff[out_shift], sixel->color_mod);
+        out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+        out_shift += uint_to_str(&out_buff[out_shift], sixel->color_map[i].PX * 255 + sixel->color_map[i].Px);
+        out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+        out_shift += uint_to_str(&out_buff[out_shift], sixel->color_map[i].Py);
+        out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_SEPARATOR);
+        out_shift += uint_to_str(&out_buff[out_shift], sixel->color_map[i].Pz);
+    }
+
+    sixel->out_buff_shift_init = out_shift;
+
+    return true;
+}
+
+bool sixel_frame_draw(sixel_t *sixel, sixel_image_t *image) {
     if (sixel == NULL) {
         return false;
     }
@@ -147,54 +154,51 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
         return false;
     }
 
-    bool subbm[image->size_x][SIXEL_PIXEL_IN_ONE_LINE];
+    bool sub_buff[image->size_x][SIXEL_PIXEL_IN_ONE_LINE];
+
+    uint_fast32_t tmp_shift = 0;
+    char tmp_buff[image->size_x + 1];
 
     uint_fast32_t out_shift = sixel->out_buff_shift_init;
     char *out_buff = sixel->out_buff;
 
     for (uint_fast32_t j = 0; j < image->size_y; j += SIXEL_PIXEL_IN_ONE_LINE) {
         for (uint_fast8_t color = 0; color < sixel->color_cnt; color++) {
-            bool color_init_flag = false;
+
+            bool color_flag = false;
             for (uint_fast32_t jj = 0; jj < SIXEL_PIXEL_IN_ONE_LINE; jj++) {
                 for (uint_fast32_t i = 0; i < image->size_x; i++) {
                     if (j + jj < image->size_y) {
                         if (SIXEL_MAS(image->image, image->size_x, image->size_y, i, j + jj) == color) {
-                            subbm[i][jj] = true;
-                            color_init_flag = true;
+                            sub_buff[i][jj] = true;
+                            color_flag = true;
                         } else {
-                            subbm[i][jj] = false;
+                            sub_buff[i][jj] = false;
                         }
                     } else {
-                        subbm[i][jj] = false;
+                        sub_buff[i][jj] = false;
                     }
                 }
             }
-            if (color_init_flag) {
+
+            if (color_flag) {
                 out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_COLOR_INTRODUCER);
                 out_shift += uint_to_str(&out_buff[out_shift], color);
 
-                char tmp_buff[image->size_x + 1];
-                uint_fast32_t tmp_shift = 0;
-
+                tmp_shift = 0;
                 for (uint_fast32_t i = 0; i < image->size_x; i++) {
                     tmp_shift += char_to_str(&tmp_buff[tmp_shift],
-                                             subbm[i][0] * 1 + subbm[i][1] * 2 + subbm[i][2] * 4 + subbm[i][3] * 8 + subbm[i][4] * 16 +
-                                                 subbm[i][5] * 32 + SIXEL_CONTROL_FUNCTIONS_BEG_DATA_CHARACTERS);
+                                             sub_buff[i][0] * 1 + sub_buff[i][1] * 2 + sub_buff[i][2] * 4 + sub_buff[i][3] * 8 + sub_buff[i][4] * 16 +
+                                                 sub_buff[i][5] * 32 + SIXEL_CONTROL_FUNCTIONS_BEG_DATA_CHARACTERS);
                 }
 
                 {
-#if 1
-                    uint_fast32_t cnt = 0;
-                    char first = 0;
-                    char current = 0;
-
                     uint_fast32_t i = 0;
                     uint_fast32_t j = i;
                     for (i = 0; i < tmp_shift; i = j) {
-                        first = tmp_buff[i];
+                        uint_fast32_t cnt = 0;
                         for (j = i; j < tmp_shift; j++) {
-                            current = tmp_buff[j];
-                            if (current == first) {
+                            if (tmp_buff[i] == tmp_buff[j]) {
                                 cnt++;
                                 continue;
                             }
@@ -204,16 +208,11 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
                         if (cnt > 1) {
                             out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_REPET);
                             out_shift += uint_to_str(&out_buff[out_shift], cnt);
-                            out_shift += char_to_str(&out_buff[out_shift], first);
+                            out_shift += char_to_str(&out_buff[out_shift], tmp_buff[i]);
                         } else {
-                            out_shift += char_to_str(&out_buff[out_shift], first);
+                            out_shift += char_to_str(&out_buff[out_shift], tmp_buff[i]);
                         }
-
-                        cnt = 0;
                     }
-#else
-                    out_shift += sprintf(&out_buff[out_shift], "%s", tmp_buff);
-#endif
                 }
             }
             out_shift += char_to_str(&out_buff[out_shift], SIXEL_CONTROL_FUNCTIONS_CARRIAGE_RETURN);
@@ -232,13 +231,13 @@ bool sixel_draw(sixel_t *sixel, sixel_image_t *image) {
     return true;
 }
 
-bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint_fast8_t* out_color_count, sixel_color_model_t *color_map) {
+bool sixel_build_color_map_palete(sixel_color_palete_e model, uint_fast8_t *out_color_count, sixel_color_model_t *out_color_map) {
     switch (model) {
     case SIXEL_COLOR_PALETE_GREYSCALE: {
         *out_color_count = SIXEL_COLOR_MAX_COUNT - 1;
         for (uint_fast32_t k = 0; k < SIXEL_COLOR_MAX_COUNT; k++) {
             uint_fast32_t c = (k * 256) / 100;
-            color_map[k] = SIXEL_RGB(c, c, c);
+            out_color_map[k] = SIXEL_RGB(c, c, c);
         }
         break;
     }
@@ -247,7 +246,7 @@ bool sixel_image_color_map_palete_build(sixel_color_palete_e model, uint_fast8_t
         for (uint_fast32_t k = 0; k <= SIXEL_COLOR_MODEL_RGB_MAX_B; k += 20) {
             for (uint_fast32_t j = 0; j <= SIXEL_COLOR_MODEL_RGB_MAX_G; j += 20) {
                 for (uint_fast32_t i = 0; i <= SIXEL_COLOR_MODEL_RGB_MAX_R; i += 20) {
-                    color_map[n++] = SIXEL_RGB(i, j, k);
+                    out_color_map[n++] = SIXEL_RGB(i, j, k);
                 }
             }
         }
@@ -296,7 +295,7 @@ static sixel_color_t rgb_to_color216(color_t color) {
     return (sixel_color_t)((R) + (6 * G) + (6 * 6 * B));
 }
 
-bool sixel_image_color_img_build(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image) {
+bool sixel_frame_conv(sixel_color_palete_e model, image_t *in_image, sixel_image_t *out_image) {
     if (out_image->size_x < in_image->size_x) {
         return false;
     }
